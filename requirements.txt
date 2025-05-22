@@ -1,0 +1,8 @@
+textual>=0.52.1
+rich>=13.7.0
+langchain>=0.0.320
+langchain-community>=0.0.16
+aiohttp>=3.8.0
+asyncio>=3.4.3
+pydantic>=2.5.2
+langchain-core>=0.1.9 
