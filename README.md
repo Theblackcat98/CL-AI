@@ -4,13 +4,13 @@ A minimal command-line tool to get bash commands from local LLMs.
 
 ## Features
 
-- Native command-line interface that preserves your terminal
-- Works both interactively and as a one-shot command
-- Color-coded responses
-- Command history and configuration
-- Loading spinner for feedback
-- Connects to local LLMs like Ollama
-- Prompts to run commands directly (toggleable)
+- Native command-line interface that preserves your terminal, with an improved Text User Interface (TUI) powered by the `rich` library.
+- Works both interactively and as a one-shot command.
+- Color-coded and well-formatted responses.
+- Command history and configuration accessible via interactive commands or command-line arguments.
+- Loading spinner for feedback during LLM queries.
+- Connects to local LLMs like Ollama.
+- Prompts to run commands directly (toggleable).
 
 ## Installation
 
@@ -88,6 +88,15 @@ Configuration options:
 - `type`: The API type (currently only "ollama")
 - `prompt_prefix`: System prompt for the LLM
 - `auto_run_prompt`: Whether to prompt to run commands (true/false)
+
+## Running Tests
+
+Unit tests are included to ensure functionality. To run the tests, navigate to the project directory and use the following command:
+
+```bash
+python -m unittest discover -v
+```
+This will automatically discover and run all tests in the `test_cmd_ai.py` file.
 
 ## Examples
 
