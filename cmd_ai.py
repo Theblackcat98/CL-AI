@@ -5,7 +5,7 @@ import os
 import sys
 import asyncio
 import aiohttp
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 import argparse
 import readline  # For command history
 from rich.console import Console
@@ -20,7 +20,10 @@ DEFAULT_CONFIG = {
     "model": "phi4:latest",
     "url": "http://localhost:11434/api",
     "type": "ollama",
-    "prompt_prefix": "You are a helpful assistant that provides accurate bash commands for Linux. Be concise and only output the command, unless the user specifically asks for explanation.",
+    "prompt_prefix": (
+        "You are a helpful assistant that provides accurate bash commands for Linux. "
+        "Be concise and only output the command, unless the user specifically asks for explanation."
+    ),
     "auto_run_prompt": True  # New setting to toggle the run command prompt
 }
 
@@ -29,11 +32,12 @@ HISTORY_FILE = os.path.expanduser("~/.cmd_ai_history.json")
 
 console = Console()
 
+
 class CommandAI:
     def __init__(self):
         self.config = self.load_config()
         self.history = self.load_history()
-        
+
     def load_config(self) -> Dict[str, Any]:
         """Load config from file or use defaults"""
         if os.path.exists(CONFIG_FILE):
@@ -48,7 +52,7 @@ class CommandAI:
             with open(CONFIG_FILE, "w") as f:
                 json.dump(DEFAULT_CONFIG, f, indent=2)
             return DEFAULT_CONFIG
-            
+
     def load_history(self) -> List[Dict[str, str]]:
         """Load chat history from file"""
         if os.path.exists(HISTORY_FILE):
@@ -58,35 +62,35 @@ class CommandAI:
             except Exception:
                 return []
         return []
-        
+
     def save_history(self):
         """Save chat history to file"""
         # Keep only the last 20 interactions
         history_to_save = self.history[-20:] if len(self.history) > 20 else self.history
         with open(HISTORY_FILE, "w") as f:
             json.dump(history_to_save, f, indent=2)
-    
+
     async def query_llm(self, prompt: str) -> str:
         """Query the LLM for a response"""
         messages = []
-        
+
         # Add system message with prefix
         messages.append({
             "role": "system",
             "content": self.config["prompt_prefix"]
         })
-        
+
         # Add past conversation for context (up to 5 exchanges)
         for item in self.history[-5:]:
             messages.append({"role": "user", "content": item["query"]})
             messages.append({"role": "assistant", "content": item["response"]})
-        
+
         # Add current prompt
         messages.append({
             "role": "user",
             "content": prompt
         })
-        
+
         # Set up the API request
         if self.config["type"] == "ollama":
             payload = {
@@ -94,7 +98,7 @@ class CommandAI:
                 "messages": messages,
                 "stream": False
             }
-            
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -174,17 +178,19 @@ class CommandAI:
         help_text = Text.from_markup(
             "This tool helps you find the right bash commands by asking an AI.\n\n"
             "[bold]Available commands:[/bold]\n"
-            "  [boldmagenta]!config[/boldmagenta] - Configure the tool\n"
-            "  [boldmagenta]!help[/boldmagenta] - Show this help\n"
+            "  [boldmagenta]!config[/boldmagenta]  - Configure the tool\n"
+            "  [boldmagenta]!help[/boldmagenta]   - Show this help\n"
             "  [boldmagenta]!history[/boldmagenta] - Show command history\n"
-            "  [boldmagenta]!clear[/boldmagenta] - Clear command history\n"
-            "  [boldmagenta]!quit[/boldmagenta] - Exit the tool\n\n"
+            "  [boldmagenta]!clear[/boldmagenta]  - Clear command history\n"
+            "  [boldmagenta]!quit[/boldmagenta]   - Exit the tool\n\n"
             "Or just type your question about a bash command and press Enter.\n"
         )
-        
+
         auto_run = self.config.get("auto_run_prompt", True)
         status_color = "green" if auto_run else "red"
-        status_text = f"\nCommand execution prompt is currently [{status_color}]{'' if auto_run else 'not '}enabled[/{status_color}]."
+        status_text = (
+            f"\nCommand execution prompt is currently [{status_color}]{'' if auto_run else 'not '}enabled[/{status_color}]."
+        )
         help_text.append(Text.from_markup(status_text))
         help_text.append(Text.from_markup("\nWhen enabled, you'll be asked whether to run each command after receiving it."))
         help_text.append(Text.from_markup("You can toggle this feature in the configuration menu (!config)."))
@@ -195,7 +201,7 @@ class CommandAI:
             "  What's the command to check disk space usage?\n"
             "  How can I extract a tar.gz file?"
         ))
-        
+
         console.print(Panel(help_text, title="[cyan]Command AI Help[/cyan]", expand=False))
 
     def show_history(self):
@@ -221,24 +227,24 @@ class CommandAI:
             # Extract content from code blocks (prioritize bash blocks)
             bash_pattern = r'```bash\s*(.*?)\s*```'
             generic_pattern = r'```\s*(.*?)\s*```'
-            
+
             import re
             # First try to find bash-specific code blocks
             bash_matches = re.findall(bash_pattern, response, re.DOTALL)
             if bash_matches:
                 # Return the first bash code block content
                 return bash_matches[0].strip()
-            
+
             # If no bash blocks, try generic code blocks
             generic_matches = re.findall(generic_pattern, response, re.DOTALL)
             if generic_matches:
                 # Return the first code block content
                 return generic_matches[0].strip()
-        
+
         # If no code blocks or extraction failed, fall back to line-by-line analysis
         lines = response.split('\n')
-        command_lines = [] # Lines that strongly look like commands
-        candidate_lines = [] # Lines that are not obvious explanations
+        command_lines = []  # Lines that strongly look like commands
+        candidate_lines = []  # Lines that are not obvious explanations
 
         for line_content in lines:
             line = line_content.strip()
@@ -247,45 +253,46 @@ class CommandAI:
 
             is_explanation = False
             # Skip likely explanation lines
-            if line.lower().startswith(('to ', 'this ', 'you ', 'the ', 'here', 'use ', 'if ', 'note:', 'note that', 'it ')):
+            explan_prefixes = ('to ', 'this ', 'you ', 'the ', 'here', 'use ', 'if ', 'note:', 'note that', 'it ')
+            if line.lower().startswith(explan_prefixes):
                 is_explanation = True
-            
+
             # Skip markdown headings
             if line.startswith('#'):
                 is_explanation = True
-            
+
             # Skip lines that are too long (likely explanations)
-            if len(line) > 120 and ' ' in line.strip() and not ('&&' in line or '||' in line): # allow longer chained commands
+            # allow longer chained commands
+            if len(line) > 120 and ' ' in line.strip() and not ('&&' in line or '||' in line):
                 is_explanation = True
-            
+
             # Skip lines with too many punctuation marks (likely explanations) unless they are part of a command structure
-            if (line.count('.') > 2 or line.count(',') > 2) and not ('find ' in line or 'grep ' in line): # find/grep can have dots
+            # find/grep can have dots
+            if (line.count('.') > 2 or line.count(',') > 2) and not ('find ' in line or 'grep ' in line):
                 is_explanation = True
 
             if not is_explanation:
                 candidate_lines.append(line)
-            
-            # Check for strong command indicators
-            if (' | ' in line or ';' in line or '>' in line or '<' in line or '&&' in line or '||' in line or
-                line.startswith('$') or line.startswith('sudo') or
-                line.startswith('./') or line.startswith('apt') or line.startswith('git') or
-                line.startswith('docker') or line.startswith('kubectl') or
-                line.startswith('find') or line.startswith('grep') or line.startswith('ls') or
-                line.startswith('cat') or line.startswith('cd') or line.startswith('mkdir') or
-                line.startswith('rm') or line.startswith('cp') or line.startswith('mv') or
-                line.startswith('df') or line.startswith('du') or line.startswith('ps')):
 
+            # Check for strong command indicators
+            command_indicators = (' | ', ';', '>', '<', '&&', '||')
+            command_prefixes = (
+                '$', 'sudo', './', 'apt', 'git', 'docker', 'kubectl', 'find', 'grep', 'ls', 'cat', 'cd', 'mkdir',
+                'rm', 'cp', 'mv', 'df', 'du', 'ps'
+            )
+            if any(ind in line for ind in command_indicators) or \
+               any(line.startswith(pref) for pref in command_prefixes):
                 processed_line = line[1:].strip() if line.startswith('$') else line
                 command_lines.append(processed_line)
-            
+
         # Prioritize lines identified by strong command indicators
         if command_lines:
             return command_lines[0]
-        
+
         # If no strong command indicators, use the first candidate line (not an explanation)
         if candidate_lines:
             return candidate_lines[0]
-        
+
         # If all lines seemed like explanations or were empty, fall back to the first non-empty line from original input
         for line_content in lines:
             if line_content.strip():
@@ -305,10 +312,10 @@ class CommandAI:
     async def process_command(self, command: str):
         """Process a user command"""
         command = command.strip()
-        
+
         if not command:
             return
-            
+
         if command == "!help":
             self.show_help()
         elif command == "!config":
@@ -325,45 +332,53 @@ class CommandAI:
         else:
             # Query LLM
             response = await self.query_llm(command)
-            
+
             # Print response
             console.print(f"\n[blue]{response}[/blue]\n")
-            
+
             # Add to history
             self.history.append({
                 "query": command,
                 "response": response
             })
-            
+
             # Save history
             self.save_history()
-            
+
             # Prompt to run the command if auto_run_prompt is enabled
             if self.config.get("auto_run_prompt", True):
                 cmd = self.extract_command(response)
-                console.print(Text.from_markup(f"[yellow]───────────────────────────────────────────[/yellow]"))
+                console.print(Text.from_markup("[yellow]───────────────────────────────────────────[/yellow]"))
                 console.print(Text.from_markup(f"[yellow]Extracted command:[/] [bold]{cmd}[/bold]"))
-                run_prompt = Prompt.ask(Text.from_markup(f"[yellow]Execute? [/][green]y[/green]/[red]n[/red]"), choices=["y", "n"], default="n")
+                run_prompt = Prompt.ask(
+                    Text.from_markup("[yellow]Execute? [/][green]y[/green]/[red]n[/red]"),
+                    choices=["y", "n"],
+                    default="n"
+                )
                 if run_prompt.lower() == 'y':
-                    console.print(Text.from_markup(f"[yellow]───────────────────────────────────────────[/yellow]"))
+                    console.print(Text.from_markup("[yellow]───────────────────────────────────────────[/yellow]"))
                     self.run_command(cmd)
                 else:
                     console.print("[yellow]Command not executed.[/yellow]")
-        
+
         return True
-            
+
     async def interactive_mode(self):
         """Run in interactive mode"""
         # Set up readline history
-        if os.path.exists(os.path.expanduser("~/.cmd_ai_readline_history")):
-            readline.read_history_file(os.path.expanduser("~/.cmd_ai_readline_history"))
-            
-        console.print(Panel(Text.from_markup(f"Command AI - Ask for bash commands (type !help for help)\nUsing model: [bold]{self.config['model']}[/bold]"), title="[cyan]Welcome[/cyan]", expand=False))
-        
+        readline_history_path = os.path.expanduser("~/.cmd_ai_readline_history")
+        if os.path.exists(readline_history_path):
+            readline.read_history_file(readline_history_path)
+
+        welcome_text = Text.from_markup(
+            f"Command AI - Ask for bash commands (type !help for help)\nUsing model: [bold]{self.config['model']}[/bold]"
+        )
+        console.print(Panel(welcome_text, title="[cyan]Welcome[/cyan]", expand=False))
+
         running = True
         while running:
             try:
-                command = Prompt.ask(Text.from_markup("[green]cmd-ai>[/green] "))
+                command_input = Prompt.ask(Text.from_markup("[green]cmd-ai>[/green]"))  # Removed trailing space
                 running = await self.process_command(command)
             except KeyboardInterrupt:
                 console.print("\nExiting...")
@@ -371,59 +386,66 @@ class CommandAI:
             except EOFError:
                 console.print("\nExiting...")
                 break
-                
+
         # Save readline history
-        readline.write_history_file(os.path.expanduser("~/.cmd_ai_readline_history"))
-        
+        readline.write_history_file(readline_history_path)
+
     async def one_shot_mode(self, query: str):
         """Run in one-shot mode for a single query"""
         response = await self.query_llm(query)
         console.print(f"\n[blue]{response}[/blue]\n")
-        
+
         # Add to history
         self.history.append({
             "query": query,
             "response": response
         })
-        
+
         # Save history
         self.save_history()
-        
+
         # Prompt to run the command if auto_run_prompt is enabled
         if self.config.get("auto_run_prompt", True):
             cmd = self.extract_command(response)
-            console.print(Text.from_markup(f"[yellow]───────────────────────────────────────────[/yellow]"))
+            console.print(Text.from_markup("[yellow]───────────────────────────────────────────[/yellow]"))
             console.print(Text.from_markup(f"[yellow]Extracted command:[/] [bold]{cmd}[/bold]"))
-            run_prompt = Prompt.ask(Text.from_markup(f"[yellow]Execute? [/][green]y[/green]/[red]n[/red]"), choices=["y", "n"], default="n")
+            run_prompt = Prompt.ask(
+                Text.from_markup("[yellow]Execute? [/][green]y[/green]/[red]n[/red]"),
+                choices=["y", "n"],
+                default="n"
+            )
             if run_prompt.lower() == 'y':
-                console.print(Text.from_markup(f"[yellow]───────────────────────────────────────────[/yellow]"))
+                console.print(Text.from_markup("[yellow]───────────────────────────────────────────[/yellow]"))
                 self.run_command(cmd)
             else:
                 console.print("[yellow]Command not executed.[/yellow]")
 
-async def async_main(argv=None): # Added argv for easier testing
-    if argv is None: # pragma: no cover
+
+async def async_main(argv=None):  # Added argv for easier testing
+    if argv is None:  # pragma: no cover
         argv = sys.argv[1:]
     parser = argparse.ArgumentParser(description="Command AI - Get bash commands from AI")
     parser.add_argument("query", nargs="*", help="Query to send to the AI (omit for interactive mode)")
     parser.add_argument("--config", action="store_true", help="Configure the tool")
     parser.add_argument("--history", action="store_true", help="Show command history")
-    
-    args = parser.parse_args(argv) # Use argv here
+
+    args = parser.parse_args(argv)  # Use argv here
     cmd_ai = CommandAI()
-    
+
     if args.config:
         cmd_ai.configure()
     elif args.history:
         cmd_ai.show_history()
     elif args.query:
-        query = " ".join(args.query)
-        await cmd_ai.one_shot_mode(query)
+        query_str = " ".join(args.query)
+        await cmd_ai.one_shot_mode(query_str)
     else:
         await cmd_ai.interactive_mode()
 
-def main(): # pragma: no cover
+
+def main():  # pragma: no cover
     asyncio.run(async_main())
+
 
 if __name__ == "__main__":
     main()
