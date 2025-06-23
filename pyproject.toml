@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+backend-path = ["."]
+
+[project]
+name = "cmd-ai"
+version = "0.1.0"
+authors = [
+  { name="Your Name", email="your.email@example.com" },
+]
+description = "A minimal command-line tool to get bash commands from local LLMs."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: Utilities",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "textual>=0.52.1",
+    "rich>=13.7.0",
+    "langchain>=0.0.320",
+    "langchain-community>=0.0.16",
+    "aiohttp>=3.8.0",
+    "asyncio>=3.4.3", # Note: asyncio is part of the standard library, but often included for clarity or specific version needs in older Pythons. For >=3.7 it's usually not needed here.
+    "pydantic>=2.5.2",
+    "langchain-core>=0.1.9",
+]
+
+[project.scripts]
+cmd-ai = "cmd_ai:main"
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/cmd-ai" # Replace with your actual URL
+"Bug Tracker" = "https://github.com/yourusername/cmd-ai/issues" # Replace with your actual URL

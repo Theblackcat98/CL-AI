@@ -1,13 +1,13 @@
 import unittest
-from unittest.mock import patch, mock_open, MagicMock, call
+from unittest.mock import patch, mock_open, MagicMock
 import json
 import os
 import sys
-import asyncio # Required for async_main and IsolatedAsyncioTestCase
 
 # Add the directory containing cmd_ai.py to sys.path
 # This allows importing cmd_ai when running tests from the test directory or project root
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))) # Assuming test_cmd_ai.py is in the same dir as cmd_ai.py
+# Assuming test_cmd_ai.py is in the same dir as cmd_ai.py
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 # If cmd_ai.py is in parent directory:
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -17,7 +17,9 @@ from cmd_ai import CommandAI, DEFAULT_CONFIG, CONFIG_FILE, HISTORY_FILE, async_m
 # Store original os.path.exists to use in tearDown if needed for actual file cleanup
 # _original_os_path_exists = os.path.exists
 
+
 class TestCommandAI(unittest.TestCase):
+
     def setUp(self):
         self.cmd_ai = CommandAI()
         # Patch os.path.exists globally for most tests to avoid actual file checks,
@@ -46,7 +48,6 @@ class TestCommandAI(unittest.TestCase):
         self.patcher_readline_write = patch('readline.write_history_file')
         self.mock_readline_write = self.patcher_readline_write.start()
 
-
     def tearDown(self):
         self.patcher_os_exists.stop()
         self.patcher_open.stop()
@@ -67,11 +68,10 @@ class TestCommandAI(unittest.TestCase):
         # if _original_os_path_exists(readline_history_file):
         #     os.remove(readline_history_file)
 
-
     # Test Configuration
     def test_load_config_default(self):
         self.mock_os_exists.return_value = False  # Simulate config file not existing
-        self.cmd_ai.config = {} # Reset
+        self.cmd_ai.config = {}  # Reset
         config = self.cmd_ai.load_config()
 
         self.assertEqual(config, DEFAULT_CONFIG)
@@ -84,7 +84,7 @@ class TestCommandAI(unittest.TestCase):
         test_config = {"model": "test_model", "url": "http://test.url"}
         self.mock_json_load.return_value = test_config
 
-        self.cmd_ai.config = {} # Reset
+        self.cmd_ai.config = {}  # Reset
         config = self.cmd_ai.load_config()
 
         self.assertEqual(config, test_config)
@@ -98,7 +98,7 @@ class TestCommandAI(unittest.TestCase):
         # The "doc" parameter is the document being parsed, not directly part of the basic error message string.
         self.mock_json_load.side_effect = json.JSONDecodeError("Error decoding JSON", "dummy_doc", 0)
 
-        self.cmd_ai.config = {} # Reset
+        self.cmd_ai.config = {}  # Reset
         config = self.cmd_ai.load_config()
 
         self.assertEqual(config, DEFAULT_CONFIG)
@@ -112,7 +112,7 @@ class TestCommandAI(unittest.TestCase):
     # Test History
     def test_load_history_no_file(self):
         self.mock_os_exists.return_value = False
-        self.cmd_ai.history = ["dummy"] # Reset
+        self.cmd_ai.history = ["dummy"]  # Reset
         history = self.cmd_ai.load_history()
 
         self.assertEqual(history, [])
@@ -123,7 +123,7 @@ class TestCommandAI(unittest.TestCase):
         test_history = [{"query": "q1", "response": "r1"}]
         self.mock_json_load.return_value = test_history
 
-        self.cmd_ai.history = [] # Reset
+        self.cmd_ai.history = []  # Reset
         history = self.cmd_ai.load_history()
 
         self.assertEqual(history, test_history)
@@ -137,14 +137,13 @@ class TestCommandAI(unittest.TestCase):
         self.mock_file_open.return_value.read.return_value = "invalid json"
         self.mock_json_load.side_effect = json.JSONDecodeError("Error", "doc", 0)
 
-        self.cmd_ai.history = ["dummy"] # Reset
+        self.cmd_ai.history = ["dummy"]  # Reset
         history = self.cmd_ai.load_history()
 
         self.assertEqual(history, [])
         self.mock_os_exists.assert_called_once_with(HISTORY_FILE)
         self.mock_file_open.assert_called_once_with(HISTORY_FILE, "r")
         self.mock_json_load.assert_called_once_with(self.mock_file_open())
-
 
     def test_save_history(self):
         self.cmd_ai.history = [{"query": f"q{i}", "response": f"r{i}"} for i in range(25)]
@@ -163,7 +162,6 @@ class TestCommandAI(unittest.TestCase):
 
         self.mock_file_open.assert_called_once_with(HISTORY_FILE, "w")
         self.mock_json_dump.assert_called_once_with(expected_history_to_save, self.mock_file_open(), indent=2)
-
 
     # Test Command Extraction
     def test_extract_command_bash_block(self):
@@ -195,7 +193,6 @@ class TestCommandAI(unittest.TestCase):
         # "And this is line two." becomes the first candidate.
         self.assertEqual(self.cmd_ai.extract_command(response_multiline_no_command), "And this is line two.")
 
-
     def test_extract_command_dollar_prefix(self):
         response = "$ echo hello"
         self.assertEqual(self.cmd_ai.extract_command(response), "echo hello")
@@ -206,6 +203,7 @@ class TestCommandAI(unittest.TestCase):
 
 
 class TestCommandAIMainAsync(unittest.IsolatedAsyncioTestCase):
+
     async def asyncSetUp(self):
         # Patch CommandAI class where it's imported in cmd_ai (which is the module where async_main is)
         self.cmd_ai_class_patcher = patch('cmd_ai.CommandAI')
@@ -233,7 +231,6 @@ class TestCommandAIMainAsync(unittest.IsolatedAsyncioTestCase):
         self.readline_read_patcher.start()
         self.readline_write_patcher.start()
 
-
     async def asyncTearDown(self):
         self.cmd_ai_class_patcher.stop()
         self.readline_read_patcher.stop()
@@ -255,6 +252,7 @@ class TestCommandAIMainAsync(unittest.IsolatedAsyncioTestCase):
     async def test_main_history_arg(self):
         await async_main(["--history"])
         self.mock_cmd_ai_instance.show_history.assert_called_once()
+
 
 if __name__ == '__main__':
     # This setup allows running `python test_cmd_ai.py`

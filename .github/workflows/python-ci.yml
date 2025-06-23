@@ -1,0 +1,76 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install flake8
+
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Test with unittest
+      run: |
+        python -m unittest discover -v
+
+  # Optional: Job to build and publish to PyPI
+  # This job will only run when a new tag is pushed (e.g., v0.1.0)
+  # You will need to configure PyPI API token in your repository secrets (PYPI_API_TOKEN)
+  # publish:
+  #   needs: build # ensure build and tests pass before publishing
+  #   if: startsWith(github.ref, 'refs/tags/v') # Only run on version tags
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Set up Python
+  #     uses: actions/setup-python@v5
+  #     with:
+  #       python-version: '3.x' # Use a recent Python version for publishing
+  #   - name: Install build dependencies
+  #     run: |
+  #       python -m pip install --upgrade pip
+  #       pip install build twine
+  #   - name: Build package
+  #     run: python -m build
+  #   - name: Publish package to PyPI
+  #     env:
+  #       TWINE_USERNAME: __token__
+  #       TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+  #     run: twine upload dist/*
+
+# To enable publishing:
+# 1. Uncomment the "publish" job above.
+# 2. Go to your GitHub repository's Settings > Secrets and variables > Actions.
+# 3. Create a new repository secret named `PYPI_API_TOKEN`.
+# 4. Generate an API token on PyPI (https://pypi.org/manage/account/token/) and paste its value into the secret.
+#    Make sure the token has permissions to upload to your specific project if possible, or to all projects if necessary.
+# 5. When you want to release a new version:
+#    a. Update the version number in `pyproject.toml`.
+#    b. Commit and push the change.
+#    c. Create a new Git tag matching the version (e.g., `git tag v0.1.1`, `git push origin v0.1.1`).
+#    This will trigger the publish job.
