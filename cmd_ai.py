@@ -21,15 +21,15 @@ from rich.table import Table
 # Simple config
 DEFAULT_CONFIG = {
     "model": "phi4:latest",  # Or your preferred default model
-    "url": "http://localhost:11434/api",  # Adjust if your Ollama runs elsewhere
+    "url": "http://localhost:11434/api",  # Adjust if Ollama runs elsewhere
     "type": "ollama",
     "prompt_prefix": (
-        "You are a helpful assistant that provides accurate bash commands for Linux. "
-        "ONLY output the command. The command MUST be enclosed in a bash "
-        "markdown code block (e.g., ```bash\\ncommand --option\\n```). "
-        "Do NOT provide any explanation or any other text outside the code block "
-        "unless explicitly asked. If you cannot provide a command, explain why in "
-        "plain text without any code blocks."
+        "You are a helpful assistant that provides accurate bash commands for "
+        "Linux. ONLY output the command. The command MUST be enclosed in a "
+        "bash markdown code block (e.g., ```bash\\ncommand --option\\n```). "
+        "Do NOT provide any explanation or any other text outside the code "
+        "block unless explicitly asked. If you cannot provide a command, "
+        "explain why in plain text without any code blocks."
     ),
     "auto_run_prompt": True
 }
@@ -54,9 +54,9 @@ class CLAI:  # Renamed class
                     # Basic validation: check if it's a dictionary
                     if not isinstance(config_data, dict):
                         console.print(
-                            f"[red]Error: Config file ({CONFIG_FILE}) does not "
-                            f"contain a valid JSON object. Using default "
-                            f"configuration.[/red]"
+                            f"[red]Error: Config file ({CONFIG_FILE}) "
+                            f"does not contain a valid JSON object. Using "
+                            f"default configuration.[/red]"
                         )
                         return DEFAULT_CONFIG
                     # You could add more specific key checks here if needed
@@ -70,13 +70,15 @@ class CLAI:  # Renamed class
             except PermissionError as e:
                 console.print(
                     f"[red]Permission error reading config file "
-                    f"({CONFIG_FILE}): {e}. Using default configuration.[/red]"
+                    f"({CONFIG_FILE}): {e}. Using default "
+                    f"configuration.[/red]"
                 )
                 return DEFAULT_CONFIG
             except Exception as e:  # Catch any other unexpected errors
                 console.print(
                     f"[red]Unexpected error loading config file "
-                    f"({CONFIG_FILE}): {e}. Using default configuration.[/red]"
+                    f"({CONFIG_FILE}): {e}. Using default "
+                    f"configuration.[/red]"
                 )
                 return DEFAULT_CONFIG
 
@@ -114,8 +116,8 @@ class CLAI:  # Renamed class
                     if not isinstance(history_data, list):
                         console.print(
                             f"[yellow]Warning: History file ({HISTORY_FILE}) "
-                            f"does not contain a valid JSON list. Starting with "
-                            f"empty history.[/yellow]"
+                            f"does not contain a valid JSON list. Starting "
+                            f"with empty history.[/yellow]"
                         )
                         return []
                     # You could add further validation for list item structure
@@ -124,19 +126,22 @@ class CLAI:  # Renamed class
             except json.JSONDecodeError as e:
                 console.print(
                     f"[yellow]Warning: Error decoding history file "
-                    f"({HISTORY_FILE}): {e}. Starting with empty history.[/yellow]"
+                    f"({HISTORY_FILE}): {e}. Starting with empty "
+                    f"history.[/yellow]"
                 )
                 return []
             except PermissionError as e:
                 console.print(
                     f"[yellow]Warning: Permission error reading history file "
-                    f"({HISTORY_FILE}): {e}. Starting with empty history.[/yellow]"
+                    f"({HISTORY_FILE}): {e}. Starting with empty "
+                    f"history.[/yellow]"
                 )
                 return []
             except Exception as e:  # Catch any other unexpected errors
                 console.print(
                     f"[yellow]Warning: Unexpected error loading history file "
-                    f"({HISTORY_FILE}): {e}. Starting with empty history.[/yellow]"
+                    f"({HISTORY_FILE}): {e}. Starting with empty "
+                    f"history.[/yellow]"
                 )
                 return []
         return []
@@ -289,10 +294,13 @@ class CLAI:  # Renamed class
             )
             made_change = True  # Toggling is always a change
         elif choice == "5":
-            # Save and exit, user might want to ensure current state is written.
+            # Save and exit, user might want to ensure current state is
+            # written.
             pass
         else:
-            console.print("[red]Invalid choice. Configuration not saved.[/red]")
+            console.print(
+                "[red]Invalid choice. Configuration not saved.[/red]"
+            )
             return  # Exit without saving for invalid choice
 
         if made_change or choice == "5":
@@ -314,14 +322,16 @@ class CLAI:  # Renamed class
     def show_help(self):
         """Show help information."""
         help_items = [
-            "This tool helps you find the right bash commands by asking an AI.\n",
+            "This tool helps you find the right bash commands by asking an "
+            "AI.\n",
             "[bold]Available commands:[/bold]",
-            "  [boldmagenta]!config[/boldmagenta]  - Configure CL AI", # Renamed
+            "  [boldmagenta]!config[/boldmagenta]  - Configure CL AI",
             "  [boldmagenta]!help[/boldmagenta]   - Show this help",
             "  [boldmagenta]!history[/boldmagenta] - Show command history",
             "  [boldmagenta]!clear[/boldmagenta]  - Clear command history",
-            "  [boldmagenta]!quit[/boldmagenta]   - Exit CL AI\n", # Renamed
-            "Or just type your question about a bash command and press Enter.\n"
+            "  [boldmagenta]!quit[/boldmagenta]   - Exit CL AI\n",  # Renamed
+            "Or just type your question about a bash command and press "
+            "Enter.\n"
         ]
         help_text_content = "\n".join(help_items)
         help_text = Text.from_markup(help_text_content)
@@ -336,8 +346,8 @@ class CLAI:  # Renamed class
         help_text.append(Text.from_markup(status_text_str))
 
         help_text.append(Text.from_markup(
-            "\nWhen enabled, you'll be asked whether to run each command after "
-            "receiving it."
+            "\nWhen enabled, you'll be asked whether to run each command "
+            "after receiving it."
         ))
         help_text.append(Text.from_markup(
             "You can toggle this feature in the configuration menu (!config)."
@@ -352,7 +362,10 @@ class CLAI:  # Renamed class
         help_text.append(Text.from_markup("\n".join(example_items)))
 
         console.print(
-            Panel(help_text, title="[cyan]CL AI Help[/cyan]", expand=False) # Renamed
+            Panel(
+                help_text, title="[cyan]CL AI Help[/cyan]",  # Renamed
+                expand=False
+            )
         )
 
     def show_history(self):
@@ -361,7 +374,7 @@ class CLAI:  # Renamed class
             console.print("[yellow]No command history found.[/yellow]")
             return
 
-        table = Table(title="[cyan]CL AI Command History[/cyan]") # Renamed
+        table = Table(title="[cyan]CL AI Command History[/cyan]")  # Renamed
         table.add_column("ID", style="dim", width=3)
         table.add_column("Query", style="green")
         table.add_column("Response", style="blue")
@@ -385,13 +398,19 @@ class CLAI:  # Renamed class
         bash_match = re.search(bash_pattern, response,
                                re.DOTALL | re.IGNORECASE)
         if bash_match:
-            return bash_match.group(1).strip()
+            extracted_text = bash_match.group(1).strip()
+            if extracted_text.startswith("$"):
+                return extracted_text[1:].lstrip()
+            return extracted_text
 
         # If no bash block, attempt to find a generic code block
         generic_pattern = r'```\s*(.*?)\s*```'
         generic_match = re.search(generic_pattern, response, re.DOTALL)
         if generic_match:
-            return generic_match.group(1).strip()
+            extracted_text = generic_match.group(1).strip()
+            if extracted_text.startswith("$"):
+                return extracted_text[1:].lstrip()
+            return extracted_text
 
         # Fallback strategy
         lines = [line for line in response.split('\n') if line.strip()]
@@ -407,7 +426,7 @@ class CLAI:  # Renamed class
                 "code block. Extracting the first non-empty line.[/yellow]"
             )
             extracted_text = lines[0].strip()
-        else: # Handles empty or whitespace-only original response
+        else:  # Handles empty or whitespace-only original response
             extracted_text = response.strip()
 
         # Final '$' stripping, handles "$ cmd" and "$cmd"
@@ -419,7 +438,9 @@ class CLAI:  # Renamed class
     def run_command(self, command: str) -> None:
         """Run a command in the shell."""
         try:
-            console.print(f"[yellow]Executing: [bold]{command}[/bold][/yellow]")
+            console.print(
+                f"[yellow]Executing: [bold]{command}[/bold][/yellow]"
+            )
             # Using subprocess.run for better security and control
             result = subprocess.run(
                 command, shell=True, check=False, text=True,
@@ -474,11 +495,12 @@ class CLAI:  # Renamed class
             if self.config.get("auto_run_prompt", True):
                 extracted_cmd = self.extract_command(response)
                 separator = Text.from_markup(
-                    "[yellow]───────────────────────────────────────────[/yellow]"
+                    "[yellow]───────────────────────────────────[/yellow]"
                 )
                 console.print(separator)
                 console.print(Text.from_markup(
-                    f"[yellow]Extracted command:[/] [bold]{extracted_cmd}[/bold]"
+                    f"[yellow]Extracted command:[/] "
+                    f"[bold]{extracted_cmd}[/bold]"
                 ))
                 run_prompt = Prompt.ask(
                     Text.from_markup(
@@ -502,23 +524,29 @@ class CLAI:  # Renamed class
         if os.path.exists(readline_history_path):
             try:
                 readline.read_history_file(readline_history_path)
-            except Exception as e: # Catch potential errors reading history
-                console.print(f"[yellow]Could not load readline history: {e}[/yellow]")
-
+            except Exception as e:  # Catch potential errors reading history
+                console.print(
+                    f"[yellow]Could not load readline history: {e}[/yellow]"
+                )
 
         welcome_message_text = (
             f"CL AI - Ask for bash commands (type !help for help)\n"  # Renamed
             f"Using model: [bold]{self.config['model']}[/bold]"
         )
         console.print(
-            Panel(Text.from_markup(welcome_message_text),
-                  title="[cyan]Welcome to CL AI[/cyan]", expand=False) # Renamed
+            Panel(
+                Text.from_markup(welcome_message_text),
+                title="[cyan]Welcome to CL AI[/cyan]",  # Renamed
+                expand=False
+            )
         )
 
         running = True
         while running:
             try:
-                prompt_text = Text.from_markup("[green]cl-ai>[/green]") # Renamed
+                prompt_text = Text.from_markup(
+                    "[green]cl-ai>[/green]"  # Renamed
+                )
                 command_input = Prompt.ask(prompt_text)
                 running = await self.process_command(command_input)
             except KeyboardInterrupt:
@@ -527,19 +555,19 @@ class CLAI:  # Renamed class
             except EOFError:  # Handle Ctrl+D
                 console.print("\nExiting...")
                 break
-            except Exception as e: # Catch other potential errors during prompt
+            except Exception as e:  # Catch other potential errors
                 console.print(f"[red]An error occurred: {e}[/red]")
                 # Decide if you want to break or continue
                 # For now, let's continue
                 pass
 
-
         # Save readline history
         try:
             readline.write_history_file(readline_history_path)
-        except Exception as e: # Catch potential errors writing history
-            console.print(f"[yellow]Could not save readline history: {e}[/yellow]")
-
+        except Exception as e:  # Catch potential errors writing history
+            console.print(
+                f"[yellow]Could not save readline history: {e}[/yellow]"
+            )
 
     async def one_shot_mode(self, query: str):
         """Run in one-shot mode for a single query."""
@@ -554,11 +582,12 @@ class CLAI:  # Renamed class
         if self.config.get("auto_run_prompt", True):
             extracted_cmd = self.extract_command(response)
             separator = Text.from_markup(
-                "[yellow]───────────────────────────────────────────[/yellow]"
+                "[yellow]───────────────────────────────────[/yellow]"
             )
             console.print(separator)
             console.print(Text.from_markup(
-                f"[yellow]Extracted command:[/] [bold]{extracted_cmd}[/bold]"
+                f"[yellow]Extracted command:[/] "
+                f"[bold]{extracted_cmd}[/bold]"
             ))
             run_prompt = Prompt.ask(
                 Text.from_markup(
@@ -592,7 +621,7 @@ async def async_main(argv: List[str] = None):  # Added type hint for argv
     )
 
     args = parser.parse_args(argv)
-    cl_ai_instance = CLAI() # Renamed
+    cl_ai_instance = CLAI()  # Renamed
 
     if args.config:
         cl_ai_instance.configure()

@@ -52,7 +52,7 @@ dev = [
 ]
 
 [tool.flake8]
-max-line-length = 127
+max-line-length = 79
 # extend-ignore = E203,W503 # Example: if you want to ignore specific errors commonly debated
 # The CI script handles specific error selections for its two passes.
 # This local config will now respect max-line-length and apply most default checks.

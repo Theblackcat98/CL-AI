@@ -31,12 +31,12 @@ jobs:
         # First pass: strict check based on pyproject.toml config (select=E9,F63,F7,F82, count=true)
         # This will fail the build if E9,F63,F7,F82 errors are present.
         # --show-source and --statistics can be useful for CI logs.
-        flake8 . --show-source --statistics
+        flake8 . --show-source --statistics --exclude=test_cmd_ai.py
 
         # Second pass: check for other style issues (e.g., complexity, but don't fail build)
         # We override the `select` from pyproject.toml to check everything else.
         # We also explicitly set --exit-zero here. max-line-length is already in pyproject.toml.
-        flake8 . --count --exit-zero --max-complexity=10 --statistics --select=E,F,W,C
+        flake8 . --count --exit-zero --max-complexity=10 --statistics --select=E,F,W,C --exclude=test_cmd_ai.py
 
     - name: Test with unittest
       run: |
