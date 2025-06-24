@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 # backend-path = ["."] # Removed this line
 
 [project]
-name = "cmd-ai"
+name = "cl-ai"
 version = "0.1.0"
 # py_modules = ["cmd_ai"] # Moved to tool.setuptools
 authors = [
-  { name="Cmd AI Contributor", email="contributor@example.com" },
+  { name="CL AI Contributor", email="contributor@example.com" }, # Changed Cmd to CL
 ]
 description = "A minimal command-line tool to get bash commands from local LLMs."
 readme = "README.md"
@@ -38,7 +38,7 @@ dependencies = [
 ]
 
 [project.scripts]
-cmd-ai = "cmd_ai:main"
+cl-ai = "cmd_ai:main" # Changed script name to cl-ai
 
 [project.urls]
 "Homepage" = "https://github.com/Theblackcat98/CL-AI" # Updated placeholder

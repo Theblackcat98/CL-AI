@@ -1,3 +1,32 @@
+Metadata-Version: 2.4
+Name: cl-ai
+Version: 0.1.0
+Summary: A minimal command-line tool to get bash commands from local LLMs.
+Author-email: CL AI Contributor <contributor@example.com>
+Project-URL: Homepage, https://github.com/Theblackcat98/CL-AI
+Project-URL: Bug Tracker, https://github.com/Theblackcat98/CL-AI/issues
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 3 - Alpha
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: Topic :: Utilities
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: rich>=13.7.0
+Requires-Dist: aiohttp>=3.8.0
+Requires-Dist: pydantic>=2.5.2
+Provides-Extra: dev
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+
 # CL-AI
 
 A minimal command-line tool to get bash commands from local LLMs.
