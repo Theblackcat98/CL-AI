@@ -1,0 +1,10 @@
+README.md
+cmd_ai.py
+pyproject.toml
+setup.py
+cmd_ai.egg-info/PKG-INFO
+cmd_ai.egg-info/SOURCES.txt
+cmd_ai.egg-info/dependency_links.txt
+cmd_ai.egg-info/entry_points.txt
+cmd_ai.egg-info/requires.txt
+cmd_ai.egg-info/top_level.txt

@@ -1,19 +1,25 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
-backend-path = ["."]
+# backend-path = ["."] # Removed this line
 
 [project]
 name = "cmd-ai"
 version = "0.1.0"
+# py_modules = ["cmd_ai"] # Moved to tool.setuptools
 authors = [
-  { name="Your Name", email="your.email@example.com" },
+  { name="Cmd AI Contributor", email="contributor@example.com" },
 ]
 description = "A minimal command-line tool to get bash commands from local LLMs."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8" # Adjusted based on rich/aiohttp and CI
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Development Status :: 3 - Alpha",
@@ -24,19 +30,32 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "textual>=0.52.1",
     "rich>=13.7.0",
-    "langchain>=0.0.320",
-    "langchain-community>=0.0.16",
     "aiohttp>=3.8.0",
-    "asyncio>=3.4.3", # Note: asyncio is part of the standard library, but often included for clarity or specific version needs in older Pythons. For >=3.7 it's usually not needed here.
+    # pydantic is not directly used by cmd_ai.py, but often useful with aiohttp.
+    # Keeping it for now, but could be removed if strictly not needed.
     "pydantic>=2.5.2",
-    "langchain-core>=0.1.9",
 ]
 
 [project.scripts]
 cmd-ai = "cmd_ai:main"
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/cmd-ai" # Replace with your actual URL
-"Bug Tracker" = "https://github.com/yourusername/cmd-ai/issues" # Replace with your actual URL
+"Homepage" = "https://github.com/Theblackcat98/CL-AI" # Updated placeholder
+"Bug Tracker" = "https://github.com/Theblackcat98/CL-AI/issues" # Updated placeholder
+
+[project.optional-dependencies]
+dev = [
+    "flake8>=6.0.0", # Using a recent version
+    # "pytest>=7.0.0", # Example if pytest were to be added
+    # "coverage>=7.0.0", # Example if coverage were to be added
+]
+
+[tool.flake8]
+max-line-length = 127
+# extend-ignore = E203,W503 # Example: if you want to ignore specific errors commonly debated
+# The CI script handles specific error selections for its two passes.
+# This local config will now respect max-line-length and apply most default checks.
+
+[tool.setuptools]
+py-modules = ["cmd_ai"]

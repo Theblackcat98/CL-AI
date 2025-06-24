@@ -342,31 +342,8 @@ class CommandAI:
             )
             return lines[0].strip()
 
-        # Fallback strategy:
-        # If the LLM failed to provide a code block, but the prompt asks it to ONLY output the command,
-        # the response might be the command itself, possibly with leading/trailing newlines.
-        lines = [line for line in response.split('\n') if line.strip()]
-        extracted_text = ""
-        if len(lines) == 1:  # If it's a single line of text, assume it's the command
-            extracted_text = lines[0].strip()
-        elif lines:  # If multiple lines, and no code block, this is ambiguous.
-            # The new prompt tries to prevent this. For now, return first non-empty line.
-            # Or, could return the whole thing if it's likely a multi-line command not in a block.
-            # Current new prompt makes this less likely.
-            console.print(
-                "[yellow]Warning: LLM response contained multiple lines without a code block. "
-                "Extracting the first non-empty line.[/yellow]"
-            )
-            extracted_text = lines[0].strip()
-        else:
-            # Handles empty or whitespace-only original response
-            extracted_text = response.strip()
-
-        # Final $ stripping, handles "$ cmd", "$cmd"
-        if extracted_text.startswith("$"):
-            # Remove $ and then any leading spaces from the rest of the command
-            return extracted_text[1:].lstrip()
-        return extracted_text
+        # If response is empty or only whitespace after all checks
+        return response.strip()
 
     def run_command(self, command: str) -> None:
         """Run a command in the shell"""
