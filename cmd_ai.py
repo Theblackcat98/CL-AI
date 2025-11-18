@@ -35,7 +35,7 @@ DEFAULT_CONFIG = {
 }
 
 CONFIG_FILE = os.path.expanduser("~/.cl_ai_config.json")  # Renamed
-HISTORY_FILE = os.path.expanduser("~/.cl_ai_history.json")  # Renamed
+CONVERSATIONS_FILE = os.path.expanduser("~/.cl_ai_conversations.json")
 
 console = Console()
 
@@ -43,7 +43,7 @@ console = Console()
 class CLAI:  # Renamed class
     def __init__(self):
         self.config = self.load_config()
-        self.history = self.load_history()
+        self.conversations = self.load_conversations()
 
     def load_config(self) -> Dict[str, Any]:
         """Load config from file or use defaults."""
@@ -106,68 +106,58 @@ class CLAI:  # Renamed class
             )
             return DEFAULT_CONFIG
 
-    def load_history(self) -> List[Dict[str, str]]:
-        """Load chat history from file."""
-        if os.path.exists(HISTORY_FILE):
+    def load_conversations(self) -> Dict[str, Any]:
+        """Load conversations from file."""
+        if os.path.exists(CONVERSATIONS_FILE):
             try:
-                with open(HISTORY_FILE, "r") as f:
-                    history_data = json.load(f)
-                    # Basic validation: check if it's a list
-                    if not isinstance(history_data, list):
+                with open(CONVERSATIONS_FILE, "r") as f:
+                    conversations_data = json.load(f)
+                    if not isinstance(conversations_data, dict):
                         console.print(
-                            f"[yellow]Warning: History file ({HISTORY_FILE}) "
-                            f"does not contain a valid JSON list. Starting "
-                            f"with empty history.[/yellow]"
+                            f"[yellow]Warning: Conversations file ({CONVERSATIONS_FILE}) "
+                            f"does not contain a valid JSON object. Starting "
+                            f"with empty conversations.[/yellow]"
                         )
-                        return []
-                    # You could add further validation for list item structure
-                    # if needed
-                    return history_data
+                        return {}
+                    return conversations_data
             except json.JSONDecodeError as e:
                 console.print(
-                    f"[yellow]Warning: Error decoding history file "
-                    f"({HISTORY_FILE}): {e}. Starting with empty "
-                    f"history.[/yellow]"
+                    f"[yellow]Warning: Error decoding conversations file "
+                    f"({CONVERSATIONS_FILE}): {e}. Starting with empty "
+                    f"conversations.[/yellow]"
                 )
-                return []
+                return {}
             except PermissionError as e:
                 console.print(
-                    f"[yellow]Warning: Permission error reading history file "
-                    f"({HISTORY_FILE}): {e}. Starting with empty "
-                    f"history.[/yellow]"
+                    f"[yellow]Warning: Permission error reading conversations file "
+                    f"({CONVERSATIONS_FILE}): {e}. Starting with empty "
+                    f"conversations.[/yellow]"
                 )
-                return []
-            except Exception as e:  # Catch any other unexpected errors
+                return {}
+            except Exception as e:
                 console.print(
-                    f"[yellow]Warning: Unexpected error loading history file "
-                    f"({HISTORY_FILE}): {e}. Starting with empty "
-                    f"history.[/yellow]"
+                    f"[yellow]Warning: Unexpected error loading conversations file "
+                    f"({CONVERSATIONS_FILE}): {e}. Starting with empty "
+                    f"conversations.[/yellow]"
                 )
-                return []
-        return []
+                return {}
+        return {}
 
-    def save_history(self):
-        """Save chat history to file."""
-        # Keep only the last 20 interactions
-        max_history = 20
-        if len(self.history) > max_history:
-            history_to_save = self.history[-max_history:]
-        else:
-            history_to_save = self.history
-
+    def save_conversations(self):
+        """Save conversations to file."""
         try:
-            with open(HISTORY_FILE, "w") as f:
-                json.dump(history_to_save, f, indent=2)
+            with open(CONVERSATIONS_FILE, "w") as f:
+                json.dump(self.conversations, f, indent=2)
         except PermissionError as e:
             console.print(
-                f"[red]Error saving history to {HISTORY_FILE}: {e}[/red]"
+                f"[red]Error saving conversations to {CONVERSATIONS_FILE}: {e}[/red]"
             )
         except Exception as e:
             console.print(
-                f"[red]Unexpected error saving history: {e}[/red]"
+                f"[red]Unexpected error saving conversations: {e}[/red]"
             )
 
-    async def query_llm(self, prompt: str) -> str:
+    async def query_llm(self, prompt: str, conversation_id: str = None) -> str:
         """Query the LLM for a response."""
         messages = []
 
@@ -177,10 +167,9 @@ class CLAI:  # Renamed class
             "content": self.config["prompt_prefix"]
         })
 
-        # Add past conversation for context (up to 5 exchanges)
-        for item in self.history[-5:]:  # Use last 5 interactions
-            messages.append({"role": "user", "content": item["query"]})
-            messages.append({"role": "assistant", "content": item["response"]})
+        if conversation_id and conversation_id in self.conversations:
+            for message in self.conversations[conversation_id]["messages"]:
+                messages.append(message)
 
         # Add current prompt
         messages.append({
@@ -197,10 +186,12 @@ class CLAI:  # Renamed class
             }
 
             progress_description = "[progress.description]{task.description}"
+            progress_console = Console(stderr=True) if not sys.stdout.isatty() else console
             with Progress(
                 SpinnerColumn(),
                 TextColumn(progress_description),
                 transient=True,
+                console=progress_console,
             ) as progress:
                 progress.add_task(description="Thinking...", total=None)
                 try:
@@ -368,22 +359,70 @@ class CLAI:  # Renamed class
             )
         )
 
-    def show_history(self):
-        """Show command history."""
-        if not self.history:
-            console.print("[yellow]No command history found.[/yellow]")
+    def list_conversations(self):
+        """List all conversations."""
+        if not self.conversations:
+            console.print("[yellow]No conversations found.[/yellow]")
             return
 
-        table = Table(title="[cyan]CL AI Command History[/cyan]")  # Renamed
-        table.add_column("ID", style="dim", width=3)
-        table.add_column("Query", style="green")
-        table.add_column("Response", style="blue")
+        table = Table(title="[cyan]Conversations[/cyan]")
+        table.add_column("ID", style="dim", width=10)
+        table.add_column("Title", style="green")
 
-        # Show last 10 history items
-        for i, entry in enumerate(self.history[-10:], 1):
-            table.add_row(str(i), entry['query'], entry['response'])
+        for conv_id, conv_data in self.conversations.items():
+            table.add_row(conv_id, conv_data["title"])
 
         console.print(table)
+
+    def show_conversation(self, identifier: str):
+        """Show a conversation by title or ID."""
+        conv_id = self.find_conversation(identifier)
+        if not conv_id:
+            console.print(f"[red]Conversation '{identifier}' not found.[/red]")
+            return
+
+        conv_data = self.conversations[conv_id]
+        table = Table(title=f"Conversation: {conv_data['title']} ({conv_id})")
+        table.add_column("Role", style="dim", width=10)
+        table.add_column("Message", style="green")
+
+        for message in conv_data["messages"]:
+            table.add_row(message["role"], message["content"])
+
+        console.print(table)
+
+    def delete_conversation(self, identifier: str):
+        """Delete a conversation by title or ID."""
+        conv_id = self.find_conversation(identifier)
+        if not conv_id:
+            console.print(f"[red]Conversation '{identifier}' not found.[/red]")
+            return
+
+        del self.conversations[conv_id]
+        self.save_conversations()
+        console.print(f"[green]Conversation '{identifier}' deleted.[/green]")
+
+    def find_conversation(self, identifier: str) -> str:
+        """Find a conversation by title or partial ID."""
+        if identifier in self.conversations:
+            return identifier
+
+        for conv_id, conv_data in self.conversations.items():
+            if conv_data["title"] == identifier:
+                return conv_id
+
+        # Match partial ID
+        matches = [conv_id for conv_id in self.conversations if conv_id.startswith(identifier)]
+        if len(matches) == 1:
+            return matches[0]
+
+        return None
+
+    def get_latest_conversation_id(self) -> str:
+        """Get the ID of the most recent conversation."""
+        if not self.conversations:
+            return None
+        return list(self.conversations.keys())[-1]
 
     def extract_command(self, response: str) -> str:
         """
@@ -460,38 +499,39 @@ class CLAI:  # Renamed class
         except Exception as e:
             console.print(f"[red]Error executing command: {e}[/red]")
 
-    async def process_command(self, command_str: str):
+    async def process_command(self, command_str: str, conversation_id: str = None):
         """Process a user command."""
         command_str = command_str.strip()
 
         if not command_str:
-            return True  # Continue running in interactive mode
+            return True, conversation_id
 
         if command_str == "!help":
             self.show_help()
         elif command_str == "!config":
             self.configure()
-        elif command_str == "!history":
-            self.show_history()
-        elif command_str == "!clear":
-            self.history = []
-            self.save_history()  # Attempt to save cleared history
-            console.print("[green]History cleared.[/green]")
         elif command_str == "!quit":
             console.print("[green]Goodbye![/green]")
-            return False  # Signal to exit interactive mode
+            return False, conversation_id
         else:
-            # Query LLM
-            response = await self.query_llm(command_str)
-
-            # Print response
+            response = await self.query_llm(command_str, conversation_id)
             console.print(f"\n[blue]{response}[/blue]\n")
 
-            # Add to history
-            self.history.append({"query": command_str, "response": response})
-            self.save_history()  # Save after each command
+            if not conversation_id:
+                conversation_id = os.urandom(4).hex()
+                self.conversations[conversation_id] = {
+                    "title": command_str.split('\n')[0],
+                    "messages": [],
+                }
 
-            # Prompt to run the command if auto_run_prompt is enabled
+            self.conversations[conversation_id]["messages"].append(
+                {"role": "user", "content": command_str}
+            )
+            self.conversations[conversation_id]["messages"].append(
+                {"role": "assistant", "content": response}
+            )
+            self.save_conversations()
+
             if self.config.get("auto_run_prompt", True):
                 extracted_cmd = self.extract_command(response)
                 separator = Text.from_markup(
@@ -513,7 +553,7 @@ class CLAI:  # Renamed class
                     self.run_command(extracted_cmd)
                 else:
                     console.print("[yellow]Command not executed.[/yellow]")
-        return True  # Continue running
+        return True, conversation_id
 
     async def interactive_mode(self):
         """Run in interactive mode."""
@@ -542,13 +582,14 @@ class CLAI:  # Renamed class
         )
 
         running = True
+        conversation_id = None
         while running:
             try:
                 prompt_text = Text.from_markup(
                     "[green]cl-ai>[/green]"  # Renamed
                 )
                 command_input = Prompt.ask(prompt_text)
-                running = await self.process_command(command_input)
+                running, conversation_id = await self.process_command(command_input, conversation_id)
             except KeyboardInterrupt:
                 console.print("\nExiting...")
                 break
@@ -569,16 +610,41 @@ class CLAI:  # Renamed class
                 f"[yellow]Could not save readline history: {e}[/yellow]"
             )
 
-    async def one_shot_mode(self, query: str):
+    async def one_shot_mode(self, query: str, title: str = None, conversation_id: str = None):
         """Run in one-shot mode for a single query."""
-        response = await self.query_llm(query)
+        original_messages = []
+        if conversation_id and conversation_id in self.conversations:
+            original_messages = self.conversations[conversation_id]["messages"]
+
+        response = await self.query_llm(query, conversation_id)
         console.print(f"\n[blue]{response}[/blue]\n")
 
-        # Add to history
-        self.history.append({"query": query, "response": response})
-        self.save_history()  # Save after processing
+        if title and conversation_id:
+            # Branching: create a new conversation with a new title
+            new_conv_id = os.urandom(4).hex()
+            self.conversations[new_conv_id] = {
+                "title": title,
+                "messages": original_messages + [
+                    {"role": "user", "content": query},
+                    {"role": "assistant", "content": response},
+                ],
+            }
+        elif conversation_id:
+            # Continuing an existing conversation
+            self.conversations[conversation_id]["messages"].append({"role": "user", "content": query})
+            self.conversations[conversation_id]["messages"].append({"role": "assistant", "content": response})
+        else:
+            # Starting a new conversation
+            new_conv_id = os.urandom(4).hex()
+            self.conversations[new_conv_id] = {
+                "title": title if title else query.split('\n')[0],
+                "messages": [
+                    {"role": "user", "content": query},
+                    {"role": "assistant", "content": response},
+                ],
+            }
+        self.save_conversations()
 
-        # Prompt to run the command if auto_run_prompt is enabled
         if self.config.get("auto_run_prompt", True):
             extracted_cmd = self.extract_command(response)
             separator = Text.from_markup(
@@ -617,19 +683,50 @@ async def async_main(argv: List[str] = None):  # Added type hint for argv
         "--config", action="store_true", help="Configure the tool"
     )
     parser.add_argument(
-        "--history", action="store_true", help="Show command history"
+        "-l", "--list", action="store_true", help="List all conversations"
+    )
+    parser.add_argument(
+        "--title", type=str, help="Set a custom title for the conversation"
+    )
+    parser.add_argument(
+        "--continue", dest="continue_conversation", type=str,
+        help="Continue a conversation by title or ID"
+    )
+    parser.add_argument(
+        "--continue-last", action="store_true",
+        help="Continue the last conversation"
+    )
+    parser.add_argument(
+        "-s", "--show", type=str, help="Show a conversation by title or ID"
+    )
+    parser.add_argument(
+        "--delete", type=str, action="append", help="Delete a conversation by title or ID"
     )
 
     args = parser.parse_args(argv)
-    cl_ai_instance = CLAI()  # Renamed
+    cl_ai_instance = CLAI()
 
     if args.config:
         cl_ai_instance.configure()
-    elif args.history:
-        cl_ai_instance.show_history()
+    elif args.list:
+        cl_ai_instance.list_conversations()
+    elif args.show:
+        cl_ai_instance.show_conversation(args.show)
+    elif args.delete:
+        for identifier in args.delete:
+            cl_ai_instance.delete_conversation(identifier)
     elif args.query:
+        conversation_id = None
+        if args.continue_last:
+            conversation_id = cl_ai_instance.get_latest_conversation_id()
+        elif args.continue_conversation:
+            conversation_id = cl_ai_instance.find_conversation(args.continue_conversation)
+
         query_str = " ".join(args.query)
-        await cl_ai_instance.one_shot_mode(query_str)
+        if not sys.stdin.isatty():
+            stdin_content = sys.stdin.read()
+            query_str = f"{query_str}\n{stdin_content}"
+        await cl_ai_instance.one_shot_mode(query_str, title=args.title, conversation_id=conversation_id)
     else:
         await cl_ai_instance.interactive_mode()
 

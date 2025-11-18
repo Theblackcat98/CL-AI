@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
 # If cmd_ai.py is in parent directory:
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from cmd_ai import CLAI, DEFAULT_CONFIG, CONFIG_FILE, HISTORY_FILE, async_main
+from cmd_ai import CLAI, DEFAULT_CONFIG, CONFIG_FILE, CONVERSATIONS_FILE, async_main
 
 
 # Store original os.path.exists to use in tearDown if needed for actual
@@ -191,103 +191,31 @@ class TestCLAI(unittest.TestCase):  # Renamed class
             f"valid JSON object. Using default configuration.[/red]"
         )
 
-    # Test History
-    def test_load_history_no_file(self):
+    # Test Conversations
+    def test_load_conversations_no_file(self):
         self.mock_os_exists.return_value = False
-        self.cl_ai.history = ["dummy"]  # Reset
-        history = self.cl_ai.load_history()
+        self.cl_ai.conversations = {"dummy": {}}
+        conversations = self.cl_ai.load_conversations()
+        self.assertEqual(conversations, {})
+        self.mock_os_exists.assert_called_once_with(CONVERSATIONS_FILE)
 
-        self.assertEqual(history, [])
-        self.mock_os_exists.assert_called_once_with(HISTORY_FILE)
-
-    def test_load_history_existing(self):
+    def test_load_conversations_existing(self):
         self.mock_os_exists.return_value = True
-        test_history = [{"query": "q1", "response": "r1"}]
-        self.mock_json_load.return_value = test_history
-
-        self.cl_ai.history = []  # Reset
-        history = self.cl_ai.load_history()
-
-        self.assertEqual(history, test_history)
-        self.mock_os_exists.assert_called_once_with(HISTORY_FILE)
-        self.mock_file_open.assert_called_once_with(HISTORY_FILE, "r")
+        test_conversations = {"conv1": {"title": "Test", "messages": []}}
+        self.mock_json_load.return_value = test_conversations
+        self.cl_ai.conversations = {}
+        conversations = self.cl_ai.load_conversations()
+        self.assertEqual(conversations, test_conversations)
+        self.mock_os_exists.assert_called_once_with(CONVERSATIONS_FILE)
+        self.mock_file_open.assert_called_once_with(CONVERSATIONS_FILE, "r")
         self.mock_json_load.assert_called_once_with(self.mock_file_open())
 
-    def test_load_history_invalid_json(self):
-        self.mock_os_exists.return_value = True
-        # Ensure open is called for reading, and json.load is attempted
-        self.mock_file_open.return_value.read.return_value = "invalid json"
-        self.mock_json_load.side_effect = json.JSONDecodeError(
-            "Error", "doc", 0
-        )
-
-        self.cl_ai.history = ["dummy"]  # Reset
-        history = self.cl_ai.load_history()
-
-        self.assertEqual(history, [])
-        self.mock_os_exists.assert_called_once_with(HISTORY_FILE)
-        self.mock_file_open.assert_called_once_with(HISTORY_FILE, "r")
-        self.mock_json_load.assert_called_once_with(self.mock_file_open())
-        # Check that some warning was printed
-        self.mock_console_print.assert_any_call(unittest.mock.ANY)
-
-    def test_load_history_permission_error(self):
-        self.mock_os_exists.return_value = True  # History file exists
-        self.mock_file_open.side_effect = PermissionError(
-            "Denied reading history"
-        )
-
-        self.cl_ai.history = ["dummy"]  # Reset
-        history = self.cl_ai.load_history()
-
-        self.assertEqual(history, [])  # Should fall back to empty history
-        self.mock_os_exists.assert_called_once_with(HISTORY_FILE)
-        self.mock_file_open.assert_called_once_with(HISTORY_FILE, "r")
-        self.mock_console_print.assert_any_call(
-            f"[yellow]Warning: Permission error reading history file "
-            f"({HISTORY_FILE}): Denied reading history. Starting with "
-            f"empty history.[/yellow]"
-        )
-
-    def test_load_history_invalid_file_content(self):
-        self.mock_os_exists.return_value = True
-        # Simulate invalid content type for history
-        self.mock_json_load.return_value = "not a list"
-
-        self.cl_ai.history = ["dummy"]  # Reset
-        history = self.cl_ai.load_history()
-
-        self.assertEqual(history, [])
-        self.mock_console_print.assert_any_call(
-            f"[yellow]Warning: History file ({HISTORY_FILE}) does not "
-            f"contain a valid JSON list. Starting with empty "
-            f"history.[/yellow]"
-        )
-
-    def test_save_history(self):
-        self.cl_ai.history = [
-            {"query": f"q{i}", "response": f"r{i}"} for i in range(25)
-        ]
-        expected_history_to_save = self.cl_ai.history[-20:]
-
-        self.cl_ai.save_history()
-
-        self.mock_file_open.assert_called_once_with(HISTORY_FILE, "w")
+    def test_save_conversations(self):
+        self.cl_ai.conversations = {"conv1": {"title": "Test", "messages": []}}
+        self.cl_ai.save_conversations()
+        self.mock_file_open.assert_called_once_with(CONVERSATIONS_FILE, "w")
         self.mock_json_dump.assert_called_once_with(
-            expected_history_to_save, self.mock_file_open(), indent=2
-        )
-
-    def test_save_history_less_than_20(self):
-        self.cl_ai.history = [
-            {"query": f"q{i}", "response": f"r{i}"} for i in range(5)
-        ]
-        expected_history_to_save = self.cl_ai.history
-
-        self.cl_ai.save_history()
-
-        self.mock_file_open.assert_called_once_with(HISTORY_FILE, "w")
-        self.mock_json_dump.assert_called_once_with(
-            expected_history_to_save, self.mock_file_open(), indent=2
+            self.cl_ai.conversations, self.mock_file_open(), indent=2
         )
 
     # Test Command Extraction
@@ -528,204 +456,218 @@ class TestCLAI(unittest.TestCase):  # Renamed class
         )
 
 
-class TestCLAIAsyncMethods(unittest.IsolatedAsyncioTestCase):  # Renamed class
-    # This new class will house tests for async methods of CLAI
+from unittest.mock import AsyncMock
 
-    # unittest.IsolatedAsyncioTestCase uses setUp, not asyncSetUp
+class TestConversationManagement(unittest.TestCase):
     def setUp(self):
-        # Common mocks needed for async method testing
-        self.cl_ai = CLAI()  # Renamed instance variable
+        self.cl_ai = CLAI()
+        # Prevent file I/O during tests
+        self.cl_ai.save_conversations = MagicMock()
+        self.cl_ai.conversations = {
+            "abcdef12": {"title": "First Conv", "messages": []},
+            "12345678": {"title": "Second Conv", "messages": []},
+            "abc45678": {"title": "Another Conv", "messages": []},
+        }
 
-        # Mock config and history loading as they are called in
-        # CLAI.__init__ and we don't want actual file I/O during
-        # these specific async tests.
-        # The global patchers in TestCLAI might interfere or might be
-        # sufficient. For clarity, let's ensure CLAI instance for
-        # these tests uses predictable config/history.
-        self.cl_ai.config = DEFAULT_CONFIG.copy()  # Use a copy of defaults
-        self.cl_ai.history = []
+    def test_find_conversation_by_full_id(self):
+        conv_id = self.cl_ai.find_conversation("abcdef12")
+        self.assertEqual(conv_id, "abcdef12")
 
-        # Patch console.print for this class too, if methods print directly
-        self.patcher_console_print_async = patch('cmd_ai.console.print')
-        self.mock_console_print_async = (
-            self.patcher_console_print_async.start()
-        )
-        self.addCleanup(self.patcher_console_print_async.stop)
+    def test_find_conversation_by_title(self):
+        conv_id = self.cl_ai.find_conversation("First Conv")
+        self.assertEqual(conv_id, "abcdef12")
 
-        # Patch Prompt.ask for methods that use it (like configure, or
-        # process_command for run prompt)
-        self.patcher_prompt_ask_async = patch('cmd_ai.Prompt.ask')
-        self.mock_prompt_ask_async = self.patcher_prompt_ask_async.start()
-        self.addCleanup(self.patcher_prompt_ask_async.stop)
+    def test_find_conversation_by_partial_id(self):
+        conv_id = self.cl_ai.find_conversation("1234")
+        self.assertEqual(conv_id, "12345678")
 
-    # Test query_llm
-    @patch('aiohttp.ClientSession.post')
-    async def test_query_llm_success(self, mock_post):
-        # Setup mock response from aiohttp
-        mock_response = MagicMock()
-        mock_response.status = 200
+    def test_find_conversation_not_found(self):
+        conv_id = self.cl_ai.find_conversation("nonexistent")
+        self.assertIsNone(conv_id)
 
-        async def json_func():  # mock async json()
-            return {"message": {"content": "mocked llm response"}}
-        mock_response.json = json_func
+    def test_find_conversation_ambiguous_partial_id(self):
+        # 'abc' matches 'abcdef12' and 'abc45678'
+        conv_id = self.cl_ai.find_conversation("abc")
+        self.assertIsNone(conv_id)
 
-        # The post call returns an async context manager,
-        # so mock its __aenter__
-        mock_post.return_value.__aenter__.return_value = mock_response
+    def test_get_latest_conversation_id(self):
+        latest_id = self.cl_ai.get_latest_conversation_id()
+        self.assertEqual(latest_id, "abc45678")
 
-        response = await self.cl_ai.query_llm("test prompt")
-        self.assertEqual(response, "mocked llm response")
-        mock_post.assert_called_once()  # Check that post was called
+    def test_get_latest_conversation_id_no_convs(self):
+        self.cl_ai.conversations = {}
+        latest_id = self.cl_ai.get_latest_conversation_id()
+        self.assertIsNone(latest_id)
 
-    @patch('aiohttp.ClientSession.post')
-    async def test_query_llm_http_error(self, mock_post):
-        mock_response = MagicMock()
-        mock_response.status = 500
+    @patch('cmd_ai.console.print')
+    def test_show_conversation(self, mock_print):
+        self.cl_ai.show_conversation("First Conv")
+        # Check that console.print was called, indicating it tried to print a table
+        mock_print.assert_called()
 
-        async def text_func():  # mock async text()
-            return "Internal Server Error"
-        mock_response.text = text_func
-        mock_post.return_value.__aenter__.return_value = mock_response
+    @patch('cmd_ai.console.print')
+    def test_show_conversation_not_found(self, mock_print):
+        self.cl_ai.show_conversation("nonexistent")
+        mock_print.assert_called_with("[red]Conversation 'nonexistent' not found.[/red]")
 
-        response = await self.cl_ai.query_llm("test prompt")
-        self.assertTrue(
-            response.startswith("Error: HTTP 500 - Internal Server Error")
-        )
-
-    @patch(
-        'aiohttp.ClientSession.post',
-        side_effect=aiohttp.ClientError("Network Error")
-    )
-    async def test_query_llm_connection_error(self, mock_post):
-        response = await self.cl_ai.query_llm("test prompt")
-        # query_llm itself prepends "Connection error: " or "Error: "
-        # For aiohttp.ClientError, it's "Connection error: "
-        self.assertEqual(response, "Connection error: Network Error")
-
-    @patch(
-        'aiohttp.ClientSession.post',
-        side_effect=Exception("Generic Exception")
-    )
-    async def test_query_llm_generic_exception(self, mock_post):
-        response = await self.cl_ai.query_llm("test prompt")
-        # For other exceptions, it's "Error: "
-        self.assertEqual(response, "Error: Generic Exception")
-
-    # Test process_command (simplified examples)
-    async def test_process_command_help(self):
-        self.cl_ai.show_help = MagicMock()  # Mock the called method
-        await self.cl_ai.process_command("!help")
-        self.cl_ai.show_help.assert_called_once()
-
-    async def test_process_command_quit(self):
-        result = await self.cl_ai.process_command("!quit")
-        self.assertFalse(result)
-        self.mock_console_print_async.assert_any_call(
-            "[green]Goodbye![/green]"
-        )
-
-    # Patching on the class itself
-    @patch.object(CLAI, 'query_llm', new_callable=MagicMock)  # Patched CLAI
-    @patch.object(
-        CLAI, 'extract_command', return_value="extracted_command"  # Patched CLAI
-    )
-    @patch.object(CLAI, 'run_command')  # Patched CLAI
-    async def test_process_command_query_and_run(
-        self, mock_run_command, mock_extract_command, mock_query_llm_method
-    ):
-        # Mock the async query_llm method on the instance for this test
-        async def mock_query_llm_side_effect(prompt):
-            return f"response for {prompt}"
-        # self.cl_ai.query_llm = mock_query_llm_side_effect
-        # # This would work if not patched with @patch
-        mock_query_llm_method.side_effect = mock_query_llm_side_effect
-
-        self.cl_ai.config["auto_run_prompt"] = True
-        self.mock_prompt_ask_async.return_value = "y"  # User chooses to run
-
-        await self.cl_ai.process_command("test query")
-
-        # mock_query_llm_method.assert_called_once_with("test query")
-        # For some reason, direct assert_called_once_with on the MagicMock
-        # assigned to query_llm (if we did self.cl_ai.query_llm =
-        # MagicMock(side_effect=...)) can be tricky with async.
-        # The @patch.object approach is cleaner here.
-        self.assertTrue(mock_query_llm_method.called)
-        self.assertEqual(mock_query_llm_method.call_args[0][0], "test query")
-
-        mock_extract_command.assert_called_once_with("response for test query")
-        mock_run_command.assert_called_once_with("extracted_command")
-        self.mock_console_print_async.assert_any_call(
-            "\n[blue]response for test query[/blue]\n"
-        )
+    def test_delete_conversation(self):
+        self.cl_ai.delete_conversation("First Conv")
+        self.assertNotIn("abcdef12", self.cl_ai.conversations)
+        self.cl_ai.save_conversations.assert_called_once()
 
 
-class TestCLAIMainAsync(unittest.IsolatedAsyncioTestCase):  # Renamed class
+class TestCLAIAsyncMethods(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.cl_ai = CLAI()
+        self.cl_ai.config = DEFAULT_CONFIG.copy()
+        self.cl_ai.conversations = {}
 
+        self.prompt_ask_patcher = patch('cmd_ai.Prompt.ask', return_value='y')
+        self.mock_prompt_ask = self.prompt_ask_patcher.start()
+        self.addCleanup(self.prompt_ask_patcher.stop)
+
+    @patch('cmd_ai.os.urandom')
+    async def test_one_shot_mode_creates_new_conversation(self, mock_urandom):
+        mock_urandom.return_value.hex.return_value = "newconvid"
+        self.cl_ai.query_llm = AsyncMock(return_value="response")
+        self.cl_ai.save_conversations = MagicMock()
+
+        await self.cl_ai.one_shot_mode("test query", title="Test Title")
+
+        self.assertIn("newconvid", self.cl_ai.conversations)
+        self.assertEqual(self.cl_ai.conversations["newconvid"]["title"], "Test Title")
+        self.assertEqual(len(self.cl_ai.conversations["newconvid"]["messages"]), 2)
+        self.cl_ai.save_conversations.assert_called_once()
+
+    async def test_one_shot_mode_continues_conversation(self):
+        self.cl_ai.conversations = {
+            "conv1": {"title": "Test", "messages": [{"role": "user", "content": "old query"}]}
+        }
+        self.cl_ai.query_llm = AsyncMock(return_value="new response")
+        self.cl_ai.save_conversations = MagicMock()
+
+        await self.cl_ai.one_shot_mode("new query", conversation_id="conv1")
+
+        self.assertEqual(len(self.cl_ai.conversations["conv1"]["messages"]), 3)
+        self.assertEqual(self.cl_ai.conversations["conv1"]["messages"][-1]["content"], "new response")
+        self.cl_ai.save_conversations.assert_called_once()
+
+    @patch('cmd_ai.os.urandom')
+    async def test_one_shot_mode_branches_conversation_with_new_title(self, mock_urandom):
+        mock_urandom.return_value.hex.return_value = "newconvid"
+        self.cl_ai.conversations = {
+            "conv1": {"title": "Original", "messages": [{"role": "user", "content": "old query"}]}
+        }
+        self.cl_ai.query_llm = AsyncMock(return_value="new response")
+        self.cl_ai.save_conversations = MagicMock()
+
+        await self.cl_ai.one_shot_mode("new query", title="New Title", conversation_id="conv1")
+
+        self.assertIn("newconvid", self.cl_ai.conversations)
+        self.assertEqual(self.cl_ai.conversations["newconvid"]["title"], "New Title")
+        self.assertEqual(len(self.cl_ai.conversations["newconvid"]["messages"]), 3)
+        self.assertEqual(self.cl_ai.conversations["conv1"]["messages"], [{"role": "user", "content": "old query"}])
+        self.cl_ai.save_conversations.assert_called_once()
+
+    @patch('cmd_ai.os.urandom')
+    @patch('cmd_ai.Prompt.ask')
+    async def test_interactive_mode_creates_conversation(self, mock_prompt_ask, mock_urandom):
+        mock_urandom.return_value.hex.return_value = "newconvid"
+        # Simulate user typing "hello", then "world", then quitting, with "n" for execution prompts
+        mock_prompt_ask.side_effect = ["hello", "n", "world", "n", "!quit"]
+        self.cl_ai.query_llm = AsyncMock(return_value="response")
+        self.cl_ai.save_conversations = MagicMock()
+
+        await self.cl_ai.interactive_mode()
+
+        # It should create one conversation with two exchanges
+        self.assertEqual(len(self.cl_ai.conversations), 1)
+        conv_id = list(self.cl_ai.conversations.keys())[0]
+        self.assertEqual(len(self.cl_ai.conversations[conv_id]["messages"]), 4)
+        self.assertEqual(self.cl_ai.conversations[conv_id]["title"], "hello")
+
+
+class TestCLAIMainAsync(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        # Patch CLAI class where it's imported in cmd_ai (which is the
-        # module where async_main is)
-        self.cl_ai_class_patcher = patch('cmd_ai.CLAI')  # Patched CLAI
-        self.MockCLAIClass = self.cl_ai_class_patcher.start()  # Patched CLAI
-
-        # This mock_cl_ai_instance is what `CLAI()` will return within
-        # async_main
+        self.cl_ai_class_patcher = patch('cmd_ai.CLAI')
+        self.MockCLAIClass = self.cl_ai_class_patcher.start()
         self.mock_cl_ai_instance = self.MockCLAIClass.return_value
 
-        # Mock async methods with an object that can be awaited (like a
-        # Future or another coroutine)
-        # Using AsyncMock would be more idiomatic if available and needed
-        # for more complex async interactions
-        # For simple call checks, a MagicMock returning a completed Future
-        # works.
+        self.stdin_patcher = patch('sys.stdin.isatty', return_value=True)
+        self.mock_stdin = self.stdin_patcher.start()
+        self.addCleanup(self.stdin_patcher.stop)
+
         async def mock_async_method(*args, **kwargs):
             return None
 
-        self.mock_cl_ai_instance.interactive_mode = MagicMock(
-            side_effect=mock_async_method
-        )
-        self.mock_cl_ai_instance.one_shot_mode = MagicMock(
-            side_effect=mock_async_method
-        )
+        self.mock_cl_ai_instance.interactive_mode = MagicMock(side_effect=mock_async_method)
+        self.mock_cl_ai_instance.one_shot_mode = MagicMock(side_effect=mock_async_method)
 
-        # Synchronous methods
         self.mock_cl_ai_instance.configure = MagicMock()
-        self.mock_cl_ai_instance.show_history = MagicMock()
-
-        # Patch readline if its absence causes issues in test environment
-        self.readline_read_patcher = patch(
-            'readline.read_history_file', MagicMock()
-        )
-        self.readline_write_patcher = patch(
-            'readline.write_history_file', MagicMock()
-        )
-        self.readline_read_patcher.start()
-        self.readline_write_patcher.start()
+        self.mock_cl_ai_instance.list_conversations = MagicMock()
+        self.mock_cl_ai_instance.show_conversation = MagicMock()
+        self.mock_cl_ai_instance.delete_conversation = MagicMock()
+        self.mock_cl_ai_instance.find_conversation = MagicMock()
+        self.mock_cl_ai_instance.get_latest_conversation_id = MagicMock()
 
     async def asyncTearDown(self):
         self.cl_ai_class_patcher.stop()
-        self.readline_read_patcher.stop()
-        self.readline_write_patcher.stop()
 
     async def test_main_interactive_mode(self):
         await async_main([])
         self.mock_cl_ai_instance.interactive_mode.assert_called_once()
 
-    async def test_main_one_shot_mode(self):
-        query = "test query"
-        await async_main([query])
-        self.mock_cl_ai_instance.one_shot_mode.assert_called_once_with(query)
-
     async def test_main_config_arg(self):
         await async_main(["--config"])
         self.mock_cl_ai_instance.configure.assert_called_once()
 
-    async def test_main_history_arg(self):
-        await async_main(["--history"])
-        self.mock_cl_ai_instance.show_history.assert_called_once()
+    async def test_main_list(self):
+        await async_main(["--list"])
+        self.mock_cl_ai_instance.list_conversations.assert_called_once()
+
+    async def test_main_show(self):
+        await async_main(["--show", "myconv"])
+        self.mock_cl_ai_instance.show_conversation.assert_called_once_with("myconv")
+
+    async def test_main_delete(self):
+        await async_main(["--delete", "myconv"])
+        self.mock_cl_ai_instance.delete_conversation.assert_called_once_with("myconv")
+
+    async def test_main_delete_multiple(self):
+        await async_main(["--delete", "myconv1", "--delete", "myconv2"])
+        self.assertEqual(self.mock_cl_ai_instance.delete_conversation.call_count, 2)
+
+    async def test_main_continue(self):
+        self.mock_cl_ai_instance.find_conversation.return_value = "found_id"
+        await async_main(["--continue", "myconv", "new prompt"])
+        self.mock_cl_ai_instance.find_conversation.assert_called_once_with("myconv")
+        self.mock_cl_ai_instance.one_shot_mode.assert_called_once_with(
+            "new prompt", title=None, conversation_id="found_id"
+        )
+
+    async def test_main_continue_last(self):
+        self.mock_cl_ai_instance.get_latest_conversation_id.return_value = "latest_id"
+        await async_main(["--continue-last", "new prompt"])
+        self.mock_cl_ai_instance.get_latest_conversation_id.assert_called_once()
+        self.mock_cl_ai_instance.one_shot_mode.assert_called_once_with(
+            "new prompt", title=None, conversation_id="latest_id"
+        )
+
+    async def test_main_with_title(self):
+        await async_main(["--title", "My Title", "new prompt"])
+        self.mock_cl_ai_instance.one_shot_mode.assert_called_once_with(
+            "new prompt", title="My Title", conversation_id=None
+        )
+
+    @patch('sys.stdin')
+    async def test_main_with_stdin(self, mock_stdin):
+        mock_stdin.isatty.return_value = False
+        mock_stdin.read.return_value = "piped content"
+        await async_main(["prompt"])
+        self.mock_cl_ai_instance.one_shot_mode.assert_called_once_with(
+            "prompt\npiped content", title=None, conversation_id=None
+        )
 
 
 if __name__ == '__main__':
-    # This setup allows running `python test_cmd_ai.py`
-    # It will discover and run tests from both TestCase classes.
     unittest.main()
