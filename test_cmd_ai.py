@@ -1,17 +1,14 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
 import sys
-import io
 import asyncio
 import os
-import json
 
 # Add the project root to sys.path so we can import cl_ai
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from cl_ai.core import CLAI
-from cl_ai.llm import extract_command
-from cl_ai import __main__ as main_module
+from cl_ai.llm import extract_command, query_llm
 
 
 class TestCLAI(unittest.TestCase):
@@ -70,7 +67,7 @@ class TestCLAI(unittest.TestCase):
         self.assertEqual(cl_ai.conversations, {})
 
     @patch('cl_ai.llm.aiohttp.ClientSession')
-    async def test_query_llm_success(self, mock_session):
+    def test_query_llm_success(self, mock_session):
         """Test successful LLM query."""
         # Setup async mock for session context manager
         mock_session_instance = MagicMock()
@@ -82,16 +79,41 @@ class TestCLAI(unittest.TestCase):
 
         mock_session_instance.post.return_value.__aenter__.return_value = mock_response
 
-        # We need to test the query_llm function directly from llm module
-        from cl_ai.llm import query_llm
         config = {"model": "test", "url": "http://test", "type": "ollama", "prompt_prefix": "prefix"}
 
-        response = await query_llm(config, "test query")
+        response = asyncio.run(query_llm(config, "test query"))
         self.assertEqual(response, "Response")
 
-    def test_async_wrapper(self):
-        """Wrapper to run async tests."""
-        asyncio.run(self.test_query_llm_success())
+    @patch("cl_ai.core.list_conversations")
+    def test_history_command_lists_conversations(self, mock_list_conversations):
+        cl_ai = CLAI.__new__(CLAI)
+        cl_ai.config = {}
+        cl_ai.conversations = {"abcd": {"title": "Example", "messages": []}}
+
+        keep_running, conversation_id = asyncio.run(
+            cl_ai.process_command("!history")
+        )
+
+        self.assertTrue(keep_running)
+        self.assertIsNone(conversation_id)
+        mock_list_conversations.assert_called_once()
+        self.assertIs(mock_list_conversations.call_args.args[0], cl_ai.conversations)
+
+    @patch("cl_ai.core.save_conversations")
+    def test_clear_command_removes_and_saves_history(self, mock_save_conversations):
+        cl_ai = CLAI.__new__(CLAI)
+        cl_ai.config = {}
+        cl_ai.conversations = {"abcd": {"title": "Example", "messages": []}}
+
+        keep_running, conversation_id = asyncio.run(
+            cl_ai.process_command("!clear")
+        )
+
+        self.assertTrue(keep_running)
+        self.assertIsNone(conversation_id)
+        self.assertEqual(cl_ai.conversations, {})
+        mock_save_conversations.assert_called_once()
+        self.assertIs(mock_save_conversations.call_args.args[0], cl_ai.conversations)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,5 +1,4 @@
 import os
-import sys
 import subprocess
 import readline
 from rich.text import Text
@@ -7,7 +6,7 @@ from rich.prompt import Prompt
 from rich.panel import Panel
 
 from cl_ai.config import load_config, load_conversations, save_conversations, save_config
-from cl_ai.ui import console, show_help, configure_interactive, list_conversations, show_conversation
+from cl_ai.ui import console, show_help, configure_interactive, list_conversations
 from cl_ai.llm import query_llm, extract_command
 
 class CLAI:
