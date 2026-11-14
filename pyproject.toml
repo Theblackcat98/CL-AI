@@ -1,18 +1,16 @@
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
-# backend-path = ["."] # Removed this line
 
 [project]
 name = "cl-ai"
 version = "0.1.0"
-# py_modules = ["cmd_ai"] # Moved to tool.setuptools
 authors = [
-  { name="CL AI Contributor", email="contributor@example.com" }, # Changed Cmd to CL
+  { name="CL AI Contributor", email="contributor@example.com" },
 ]
 description = "A minimal command-line tool to get bash commands from local LLMs."
 readme = "README.md"
-requires-python = ">=3.8" # Adjusted based on rich/aiohttp and CI
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -32,30 +30,23 @@ classifiers = [
 dependencies = [
     "rich>=13.7.0",
     "aiohttp>=3.8.0",
-    # pydantic is not directly used by cmd_ai.py, but often useful with aiohttp.
-    # Keeping it for now, but could be removed if strictly not needed.
     "pydantic>=2.5.2",
 ]
 
 [project.scripts]
-cl-ai = "cmd_ai:main" # Changed script name to cl-ai
+cl-ai = "cl_ai.__main__:main"
 
 [project.urls]
-"Homepage" = "https://github.com/Theblackcat98/CL-AI" # Updated placeholder
-"Bug Tracker" = "https://github.com/Theblackcat98/CL-AI/issues" # Updated placeholder
+"Homepage" = "https://github.com/Theblackcat98/CL-AI"
+"Bug Tracker" = "https://github.com/Theblackcat98/CL-AI/issues"
 
 [project.optional-dependencies]
 dev = [
-    "flake8>=6.0.0", # Using a recent version
-    # "pytest>=7.0.0", # Example if pytest were to be added
-    # "coverage>=7.0.0", # Example if coverage were to be added
+    "flake8>=6.0.0",
 ]
 
 [tool.flake8]
 max-line-length = 79
-# extend-ignore = E203,W503 # Example: if you want to ignore specific errors commonly debated
-# The CI script handles specific error selections for its two passes.
-# This local config will now respect max-line-length and apply most default checks.
 
 [tool.setuptools]
-py-modules = ["cmd_ai"]
+packages = ["cl_ai"]

@@ -1,2 +1,0 @@
-[console_scripts]
-cmd-ai = cmd_ai:main

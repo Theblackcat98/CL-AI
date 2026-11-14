@@ -10,6 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
@@ -26,17 +27,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install .[dev] # Install package and dev dependencies
 
-    - name: Lint with flake8
-      run: |
-        # First pass: strict check based on pyproject.toml config (select=E9,F63,F7,F82, count=true)
-        # This will fail the build if E9,F63,F7,F82 errors are present.
-        # --show-source and --statistics can be useful for CI logs.
-        flake8 . --show-source --statistics --exclude=test_cmd_ai.py
-
-        # Second pass: check for other style issues (e.g., complexity, but don't fail build)
-        # We override the `select` from pyproject.toml to check everything else.
-        # We also explicitly set --exit-zero here. max-line-length is already in pyproject.toml.
-        flake8 . --count --exit-zero --max-complexity=10 --statistics --select=E,F,W,C --exclude=test_cmd_ai.py
+    - name: Lint package source and tests
+      run: flake8 cl_ai test_cmd_ai.py --show-source --statistics --select=E9,F63,F7,F82,F401
 
     - name: Test with unittest
       run: |
